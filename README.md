@@ -110,13 +110,6 @@ dedicated file following a single template:
 - part of the `X/C1KE`/`A03` constructor does not decompile in jadx's normal
   mode (the logic is presented from a fallback dump).
 
-Resolved (2026-10-07): the semantics of `_ge.sb/_ge.sv` were decrypted
-byte-by-byte — `sv = stat("/sys/module/vmw_pvscsi")==0` (VMware detection),
-`sb = stat("/sys/module/vboxsf")==0` (VirtualBox detection); the third flag
-`su` (root, OR over 9 su paths) never reaches the wire — insertion is blocked
-by AB-gate 14 (default=0). On a clean phone it is always
-`{"sb":false,"sv":false}`.
-
 ## How to read
 
 1. [`docs/01-flow-overview.md`](docs/01-flow-overview.md) — the map of the
