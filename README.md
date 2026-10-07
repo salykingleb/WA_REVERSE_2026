@@ -142,7 +142,7 @@ All reverse engineering, analysis and documentation were produced by the: **[htt
 Feel free to reach out with any questions, as well as to obtain a ready-made
 library implementation built on the basis of this reverse engineering (Go).
 
-**If this work was useful to you, you can thank the author via USDT (TRC-20):**
+**If this work was useful to you, you can thank me with the help of USDT (TRC-20).:**
 
 ```
 THSLZyomC5h7kmQSNPqBSCR6eD1YTD1RXr
