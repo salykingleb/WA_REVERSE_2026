@@ -107,14 +107,6 @@ dedicated file following a single template:
 
 ## Open questions (honestly not established by the reverse)
 
-- `aid`: the formula structure is confirmed — SHA-256 of the android_id string
-  → base64-std, no other inputs; but the byte-exact input assembly was not
-  reproduced (a bare `sha256(android_id)` yields `2epZwjZw…` ≠ the live
-  `VM60VU78…`) — an unidentified salting step remains inside the Rust chain;
-- `_lh`: the nomenclature and formula are established ("library hash" —
-  SHA-256 of the **content** of one .so from nativeLibraryDir, unlike
-  `_ln`/`_iln` which hash **names**); only the library name is unconfirmed by
-  a hook (candidate `libwhatsapp.so`);
 - part of the `X/C1KE`/`A03` constructor does not decompile in jadx's normal
   mode (the logic is presented from a fallback dump).
 
