@@ -1,0 +1,19 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Python (рабочие скрипты анализа)
+__pycache__/
+*.pyc
+.venv/
+
+# Локальные артефакты, не для публикации
+*.bin
+*.apk
+*.so
