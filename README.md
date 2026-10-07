@@ -137,8 +137,7 @@ by AB-gate 14 (default=0). On a clean phone it is always
 
 ## Author & Contact
 
-All reverse engineering, analysis and documentation were produced by the
-author — Telegram: **[https://t.me/Premium_SMS_Messenger](https://t.me/Premium_SMS_Messenger)**
+All reverse engineering, analysis and documentation were produced by the: **[https://t.me/Premium_SMS_Messenger](https://t.me/Premium_SMS_Messenger)**
 
 Feel free to reach out with any questions, as well as to obtain a ready-made
 library implementation built on the basis of this reverse engineering (Go).
