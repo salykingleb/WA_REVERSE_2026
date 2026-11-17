@@ -1,228 +1,181 @@
-# Дельта: 2.26.35.75 → 2.26.44.90 (логин и пост-логин)
+# Delta: 2.26.35.75 → 2.26.44.90 (registration, login, post-login)
 
-Сверка документации (реверс 2.26.35.75, versionCode 263507522) с новой сборкой
-**2.26.44.90 (versionCode 264409011)**, снятой с устройства SM-A325F (RZ8RB1LX24T).
+Re-verification of this documentation against **2.26.44.90 (versionCode 264409011)**,
+pulled from a live device (SM-A325F, Android 13) and analysed statically (jadx, smali,
+native libraries) and dynamically (Frida).
 
-## 0. Метод и артефакты
-
-| Что | Где |
+| Artifact | Location |
 |---|---|
-| APK 2.26.44.90 | `apk_update/pers_2.26.44.90_base.apk` (147 363 498 Б, sha256 `MSherFwx…`) |
-| Декомпиляция новой сборки | `C:\REVERS\wa_params\jadx_264409011\sources` (83 889 классов, jadx 1.5.1; 234 класса не декомпилированы) |
-| Старое дерево | `C:\REVERS\wa_params\jadx_out\sources` (2.26.35.75) |
-| Нативные библиотеки | `C:\REVERS\wa_params\natives_new\` + `natives_new\decompressed\` (runtime-распаковка superpack) |
-| Отчёт по нативке | `natives_new\report_264409011.json` |
+| APK | `apk_update/pers_2.26.44.90_base.apk` (147 363 498 B) |
+| jadx tree | `jadx_264409011/sources` (83 889 classes, 234 decompilation failures) |
+| smali | `smali1` (classes.dex), `smali2` (classes2.dex) |
+| Native libs | `natives_new/` + `natives_new/decompressed/` (runtime superpack) |
+| Live capture | `hooks/wa_agent_log_registration.txt` (registration, 5806 lines) |
+| Frida agent | `hooks/agent/agent.ts` (compiled with `frida-java-bridge`) |
 
-Ограничение метода: всё, что помечено **UNKNOWN**, требует живого захвата — тела
-методов `ConnectionThread`/`C250617x.A00` jadx не отдал (`Method dump skipped`).
+## 1. Registration
 
-## 1. Итог
+The registration flow (`/v2/code`, `/v2/register`, `ENC`+`H`, TLS) is **unchanged**.
+Only the version-dependent constants were refreshed.
 
-| Область | Вердикт |
-|---|---|
-| Преамбула `57 41 06 03`, edge-заголовок `45 44 00 01` | **OK** (побайтово), но код переехал в state machine `X.2DR.run()` |
-| Ветка версии 5 (`57 41 05 03`) | **GONE** — удалена целиком (раньше была недостижима) |
-| Framing, `GOA`, лимит 16 MiB | **OK** |
-| Noise-паттерны, pqMode, PQ-TLV, ML-KEM-512 | **OK** (имена символ в символ) |
-| Сертификат v6 (`BW5`/`BW4`/`Baq`), `WhatsAppLongTerm1` | **OK**; изменён только текст ошибки (+ `issuer=`) |
-| Сертификат v5 (`BW6`/`Bar`) и `noise certificate expired` | **GONE** |
-| ClientFinish | **OK** |
-| **ClientPayload** | **CHANGED**: +2 поля (49 `messageSts`, 50 `integrationAttestation`), версия 2.26.44.90, enum deviceType +2 значения |
-| keystore_attestation | **CHANGED**: явный узел `ib/keystore_attestation` (id 6), гейт AB 1935, троттлинг AB 2067 + `ka_stanza_sent_ts` |
-| AB 2078/2079 (challenge) | **OK** — читаются через `A0Z` (2078 = длина random-части, 2079 = окно ключа) |
-| gpia / safetynet / ACS v1-v2 / edge_routing | **OK** |
-| Нативка | **CHANGED**: новый `librust.so` (Shortcake/ML-KEM-768), `libwhatsapp.so` −39 %, `libwhatsappmerged.so` + mldsa65/87 |
+| Constant | 2.26.35.75 | 2.26.44.90 |
+|---|---|---|
+| `APKversion` / `VersionCode` | 2.26.35.75 / 263507522 | **2.26.44.90 / 264409011** |
+| `APKversionBiz` / `VersionCodeBiz` | 2.26.37.72 | **2.26.44.74 / 264407400** |
+| `SHA256Personal` (b64 SHA-256 of base.apk) | — | `MSherFwxGVrFW62d/1bbwIsDxx4PlT/5kW9JHhRfY4I=` |
+| `ShatrPersonal` (first 10 MiB) | — | `zgl2f9Li9IrRlY6RydXO0EmPm6WMfTdvsyrosOszSOs=` |
+| `SizeBytesPersonal` | 144 362 968 | **147 363 498** |
+| `SHA256Biz` / `ShatrBiz` / `SizeBytesBiz` | — | `tTZAqKmY…` / `doWAtTzf…` / 166 679 260 |
+| `GIDh` (b64 SHA-256 classes.dex) | — | `Yvv3yGdl…` (personal), `fEsWXeLb…` (biz) |
+| `GIILn` (b64 SHA-256 sorted lib names) | 42 / 43 names | **44 / 45 names** |
+| `HashKey` (b64 MD5 classes.dex) | — | `QuTjjfD8…` (personal), `T+1+lIVX…` (biz) |
+| `DexDigestB64` (regtoken) | `fC5+DZsS…` | `QuTjjfD8lrByE713Mf2ceQ==` |
+| `MacKeyB64` (PBKDF2 over `about_logo.png`) | `sdvJhddp…` | **unchanged** |
+| `ReleaseDateUnix` | 1794096000 (2026-11-08) | **1794614400 (2026-11-14)** |
+| `CertPersonal` / `ApkDigest` | `OKD31…` / `OYfQQ9…` | **unchanged** (same signing key) |
 
-## 2. Логин-хендшейк
+### 1.1. Permissions and `_gp`
 
-### 2.1. Преамбула и edge-заголовок — без изменений, но другой код
+`_gp = base64(sha256(concat(sorted(manifest permissions))))` — the formula is unchanged,
+but the permission set changed, and it now **differs between personal and business**:
 
-- `X/C40461qe.A04()` → `{87, 65, 6, 3}` (`jadx_264409011/sources/X/C40461qe.java:288-290`), как и было.
-- Порядок записи: `ED 00 01` → 3 байта BE длины `routing_info` → blob → `W A 06 03`.
-- Пишет теперь `X.2DR.run()` (state machine), а не конструктор `NoiseSocket`:
-  `C2DR.java:33-38` (тело не декомпилировано) → подтверждено дампом из `classes2.dex`.
-- Условие edge-заголовка: непустой prefs `routing_info` (base64, лимит 256 Б) — **OK**,
-  `C40481qg.java:11-16`, обработчик `<edge_routing>`: `C41461sh.java:134-140`.
+| Package | Permissions | `_gp` |
+|---|---|---|
+| `com.whatsapp` | 91 | `IUm79ogL4VaKd/pq5Hdj/5TxErdbGLuSRp3VbtEHg90=` |
+| `com.whatsapp.w4b` | 91 | `69poSQ9I+Je5SQUP3zp74LEklzjVFZfyc5aUVM5iGkc=` |
 
-### 2.2. Ветка v5 удалена
+Changes versus 2.26.35.75: `android.permission.BLUETOOTH` and
+`android.permission.CREDENTIAL_MANAGER_QUERY_CANDIDATE_CREDENTIALS` were added;
+`com.amazon.device.messaging.permission.RECEIVE` and
+`com.whatsapp.permission.RECEIVE_ADM_MESSAGE` were removed. The personal/business
+sets differ in `RECEIVE_SMS`, `*.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`,
+`*.permission.BROADCAST`, `*.permission.MAPS_RECEIVE`.
 
-В 2.26.35.75 в `A04()` была ветка `if (A00 == 6) … else {87,65,5,3}` и лог
-`NoiseSocket protocol version is not 5 or 6`. В 2.26.44.90:
-- поля `A00` нет, `A04()` — плоская константа;
-- grep `NoiseSocket protocol version is not` → **0**;
-- нет протобафов v5-сертификата (`BW6`/`Bar`) и строки `noise certificate expired` → **0**.
+### 1.2. Runtime class names (jadx vs ART)
 
-### 2.3. Framing — OK
+jadx prefixes obfuscated names with `C<id>`; at runtime the names are the original ones:
 
-- 3 байта BE длины + protobuf `HandshakeMessage`, `flush()` после кадра: `C40511qj.java:20-29`.
-- Лимит 16 777 216: инвертировано условие, семантика та же.
-- Маркер `GOA {71,79,65}`: `C40501qi.java:9`, сравнение в `C40461qe.java:53-58`.
-- `HandshakeMessage` descriptor: `CLIENT_HELLO=2, SERVER_HELLO=3, CLIENT_FINISH=4` — идентичен (`C40881rg.java`).
+| Purpose | jadx | runtime |
+|---|---|---|
+| Stanza decoder (`readNode`) | `C242314q` | **`X.14q`** |
+| Stanza encoder (`writeNode`) | `C41301sR` | **`X.1sR`** |
+| ClientPayload provider | `C39641oJ` | **`X.1oJ`** |
+| ClientPayload message | `C39651oO` | **`X.1oO`** |
+| Keystore attestation builder | `C250617x` | **`X.17x`** |
+| Attestation sender | `RunnableC49222Eu` | **`X.2Eu`** |
+| `ProtocolTreeNode` | `C0T8` | `X.0T8` |
+| Node attribute | `C0T5` | `X.0T5` |
 
-### 2.4. Noise-паттерны и pqMode — OK
+## 2. Login handshake
 
-`X/C40601qu.java:16,35-45` содержит те же имена:
-`Noise_XX_25519_AESGCM_SHA256`, `Noise_IK_25519_AESGCM_SHA256`,
-`Noise_XXfallback_…`, `Noise_XXkem_…`, `Noise_XXkem-FS_…`, `Noise_XXkemEph_…`,
-`Noise_IKkem+…`, `Noise_IKkem-FS+…`, `Noise_IKkem2+…`.
-
-- Длинные имена (>32 Б) хешируются SHA-256: `C40601qu.java:68-72`.
-- Enum pqMode: `EnumC40841rc.java:8-17` — 0 UNKNOWN, 1 XXKEM, 2 XXKEM_FS, 3 WA_CLASSICAL,
-  4 WA_PQ, 5 IKKEM, 6 IKKEM_FS, 7 XXKEM_2, 8 IKKEM_2, 9 XXKEM_EPH — **те же значения**.
-- Выбор pqMode и fork full/resume: `C40461qe.A01` (`:79-93`), тот же лог
-  `missing serverStaticPQ forcing full handshake`.
-- Преамбула микшируется в `h` (`span init_cipher_full=19 / resume=20 / fallback=18`) — **OK**.
-
-### 2.5. Сертификат — OK
-
-- `BW5{leaf=1,intermediate=2}` → `C30042DJo.java`; `BW4{details=1,signature=2}` → `C30043DJp.java`;
-  `Baq{serial=1,issuerSerial=2,key=3,notBefore=4,notAfter=5}` → `C30041DJn.java` —
-  дескрипторы `newMessageInfo` совпадают со старыми побайтово.
-- Корневой ключ `WhatsAppLongTerm1` — те же 32 байта (`AnonymousClass206.java:13-16`).
-- Правила проверки (serial/issuerSerial/подписи/сверка key со static) — `C40461qe.java:202-212`.
-- Изменение: текст `wa6: noise certificate key does not match proposed server static key`
-  теперь с хвостом `; issuer=<issuerSerial>` (`C40461qe.java:260-263`).
-
-### 2.6. ClientFinish — OK
-
-`C40911rj.java`: поля `static=1, payload=2, extendedCiphertext=3, paddedBytes=4,
-simulateXxkemFs=5`; поля `signature` нет. Порядок: encrypt_cs (span 10) → ecdh (6) →
-encrypt_login_payload (11) → кадр `clientFinish` (поле 4, бит 4) (`C40461qe.java:203-246`).
+| Element | 2.26.35.75 | 2.26.44.90 |
+|---|---|---|
+| Preamble | `57 41 06 03` | **unchanged**, but written by the state machine `X.2DR.run()` |
+| v5 branch (`57 41 05 03`) | present but unreachable | **removed entirely** (no version field, no log, no v5 cert protobufs) |
+| Framing / `GOA` / 16 MiB limit | — | unchanged |
+| Noise patterns, `pqMode` enum, PQ-TLV, ML-KEM-512 | — | unchanged |
+| Server certificate v6 (`BW5`/`BW4`/`Baq`), `WhatsAppLongTerm1` | — | descriptors byte-identical |
+| v5 certificate (`BW6`/`Bar`), `noise certificate expired` | present | **removed** |
+| Cert key mismatch error | plain text | text now ends with `; issuer=<issuerSerial>` |
+| ClientFinish | — | unchanged |
 
 ## 3. ClientPayload
 
-Класс: `X/C39651oO.java` (было `X/C1HS.java`). **38 полей вместо 36.**
+Message `X.1oO` now has **38 field numbers**; numbers 1–48 are unchanged, two fields were added:
 
-### 3.1. Новые поля
-
-| Поле | Номер | Тип | Откуда | Статус |
-|---|---|---|---|---|
-| `messageSts` | **49** | int64 | контекст `C39631oI.A09` (`duplexMessageStsMicros`), `AbstractC45831zv.java:4732-4739` | NEW |
-| `integrationAttestation` | **50** | msg `C8t7{staticUnbound=1, onlineSigned=3}` | Java-сеттеров нет → вероятно нативка | NEW, наполнение UNKNOWN |
-
-Все номера 1–48 сохранены без изменений.
-
-### 3.2. Версия
-
-`appVersion = {2, 26, 44, 90}`, строка `"2.26.44.90"` (`AbstractC39721oq.java:9`,
-`AbstractC45831zv.java:4472-4500`); `buildHash` — `Base64.decode(C00M.A04("2.26.44.90"))`
-(`AbstractC45831zv.java:4876-4883`).
-
-### 3.3. Уточнения по старым полям
-
-- `lidDbMigrated` (41): условие `A04 != null && !A0A` — в документации было записано `== null` (ошибка доки, не сборки).
-- `paaLink` (44): заполнялся и в 2.26.35.75 (кейс DI 2133), в 2.26.44.90 — DI 2212 (`AbstractC29831Tr.java:21555`).
-- `deviceType` (userAgent): enum расширен — +`SMART_DISPLAY(5)`, +`SMART_SPEAKER(6)` (`EnumC39811pW.java:8-15`).
-- Слот `C39631oI.A09` теперь `Long duplexMessageStsMicros`; `passive` переехал в `A0A`.
-
-### 3.4. Сдвиг DI-номеров (для тех, кто патчит по номерам)
-
-| Что | Было | Стало |
-|---|---|---|
-| провайдер payload | 6929 | 7376 |
-| ключ сортировки | 6930 | 7377 |
-| кейсы филлеров | 6556-6561, 6567 | 694-699, 705 |
-| paaLink | 2133 | 2212 |
-
-### 3.5. `_lh` и shortcake
-
-- `_lh` — не поле ClientPayload ни в одной версии; Java-кода нет (`grep "_lh"` → 0).
-  Код хэшера жив в нативке (`invalid_library_name`, `failed_sha` в `libwhatsapp.so`).
-- Кандидат значения для 44.90 (по формуле из `docs/05-integrity/_lh.md`), **требует подтверждения живым захватом**:
-  `b64(SHA-256(libwhatsapp.so))` = `4ySx1nCRZmHIIOb5iSSVA0quBT/MIJlyqOQg9FL8gbY=`
-  (файл 8 383 928 Б, sha256 `e324b1d6…`); для `libwhatsappmerged.so` —
-  `C/GQ+b7wlhHckCq1SsgqG6NLJZm6rHc8T/zLwNtBXOM=`.
-- Shortcake (PQ-логин, ML-KEM-768) **переехал в `librust.so`** — см. §5.
-
-## 4. Пост-логин
-
-### 4.1. keystore_attestation — новый путь отправки
-
-- Гейт: `A14(1935)` — тот же AB-флаг (`C250617x.java:203-205`).
-- Троттлинг: `A0Z(2067)` + prefs `ka_stanza_sent_ts` (`RunnableC49222Eu.java:89-98`).
-- Узел: `new C0T8(new C0T8("keystore_attestation", A04, null), "ib", null)`, id **6**.
-- В 2.26.35.75 строкового литерала `keystore_attestation` в Java не было — узел собирался иначе.
-- Формат цепочки (root → … → leaf одним blob’ом) — **OK** (`C250617x.java:148-154`).
-
-### 4.2. Challenge — формат тот же, источник может отличаться
-
-`smali1/X/17x.smali:1315-1421`:
-
-- если `p2 == null`: `SecureRandom` (`X/182.A00`) → `new byte[A0Z(2078)]` → `nextBytes`;
-- `ByteBuffer.allocate(len + 9)`, `BIG_ENDIAN`, `putLong(clock.A00()/1000)` (8 байт, секунды),
-  `put(0x1F)`, `put(random)` → `setAttestationChallenge`.
-
-То есть `challenge = uint64BE(секунды) ‖ 0x1F ‖ random(2078)` — как в 2.26.35.75.
-
-Отличие: при `p2 != null` random не генерируется — используется переданный массив.
-В новом пути `2Eu.1.smali:1036` вызывает `17x.A04(..., byte[])`, а байты приходят из
-действия `att-stanza-custom`, то есть challenge может быть серверным.
-
-### 4.3. AB 2078/2079 — не удалены
-
-Ранее в отчёте было сказано «удалены» — это ошибка: в 2.26.44.90 они читаются методом
-`A0Z`, а не `A0Y`.
-
-| AB | Код | Где | Смысл |
+| # | Field | Type | Notes |
 |---|---|---|---|
-| 2074 | `0x81a` | `17x.smali:1752,1886` | динамический префикс алиаса |
-| 2078 | `0x81e` | `17x.smali:1336` | длина random-части challenge |
-| 2079 | `0x81f` | `17x.smali:605,1133` | окно действия ключа |
-| 1934 | `0x78e` | `17x.smali:3203` (`A07`) | гейт аттестации |
-| 1935 | `0x78f` | `2Eu.1.smali:912` | гейт кастомного узла |
-| 2067 | `0x813` | `2Eu.1.smali:972` | троттлинг переотправки |
+| 49 | `messageSts` | int64 | from `X.1oI.A09` (`duplexMessageStsMicros`) |
+| 50 | `integrationAttestation` | message `X.C8t7{staticUnbound=1, onlineSigned=3}` | no Java setter found; filled outside Java |
 
-### 4.4. Без изменений
+Live capture of a fresh registration (222 B payload):
 
-| Узел | Подтверждение |
-|---|---|
-| `ib/integrity_payload` (id 194) | `JniBridge.java:887-903` |
-| `ib/gpia/jws` (сообщение 254, JNI id 3) | `C16Z.java:16-51` |
-| `ib/safetynet/integrity` (сообщение 179) | `C41461sh.java:174-182`, `C39611oG.java:196-204` |
-| `edge_routing/routing_info` | `C41461sh.java:134-140` |
-| ACS v1 (privatestats, sign_credential v1, blinded_credential 32 Б, id 239) | `JniBridge.java:833-847` |
-| ACS v2 (sign_credential v2, project_name/config_id) | `C1XB.java:36-70,163-193` |
-| notice/tos/recovery_nonce | `C41461sh.java:193-209` |
+```
+1  username            = 222583156932850
+3  passive             = 1
+5  userAgent           = appVersion 2.26.44.90, mcc 250 / mnc 039, os 13,
+                         manufacturer samsung, model a32, lg=ru lc=RU,
+                         osVersion TP1A.220624.014.A325FXXSBDXJ1
+9  phoneId              (fixed32)
+12 connectType          = 1
+13 connectReason        = 6
+23 oc                   = 1
+36 memClass             = 2015
+40 trafficAnonymization = 0
+43 connectionSequenceInfo (fixed32)
+44 paaLink              = 0
+```
 
-### 4.5. Порядок узлов на проводе — UNKNOWN
+**Fields 49 and 50 were absent in the live payload** — they are optional and were not
+populated for this account/session.
 
-Все обработчики есть, но разбор `<success>` (`HandlerThreadC08060Yt`) не декомпилирован.
-Порядок остаётся по живому захвату 2.26.35.75.
+Documentation corrections found during the comparison:
 
-## 5. Нативные библиотеки
+- `lidDbMigrated` (41) is set when `A04 != null` — the docs previously said `== null`.
+- `paaLink` (44) *is* populated (was documented as "not populated").
+- `deviceType` enum gained `SMART_DISPLAY(5)` and `SMART_SPEAKER(6)`.
 
-| Библиотека | 2.26.35.75 | 2.26.44.90 | Изменение |
+## 4. keystore_attestation
+
+Builder and sender were split in 2.26.44.90; see
+[keystore-attestation-2.26.44.90.md](12-post-login/keystore-attestation-2.26.44.90.md) for details.
+
+- Builder: `X.17x`; gates AB **1934**, alias AB **2074**, random length AB **2078**, key window AB **2079**.
+- Sender: `X.2Eu`; gate AB **1935**, throttle AB **2067** with pref `ka_stanza_sent_ts`.
+- Challenge: `uint64BE(seconds) ‖ 0x1F ‖ p2`; live `p2` is **32 bytes supplied by the caller**
+  (the `SecureRandom(AB 2078)` path is not used on this route).
+- Live certificate chain: **3420 bytes** DER, sent as `<ib><keystore_attestation>` right after
+  `<ib><unified_session>`.
+
+## 5. Post-login traffic
+
+A full live capture of the first login after registration is documented in
+[14-post-login-capture-2.26.44.90.md](14-post-login-capture-2.26.44.90.md): node order,
+attributes, blob sizes and the set of features activated after `<success>`.
+
+## 6. Native libraries
+
+| Library | 2.26.35.75 | 2.26.44.90 | Change |
 |---|---|---|---|
-| `libs.so` (superpack) | 13 544 024 | 14 352 736 | +808 712 Б, раскладка та же, архив зашифрован |
-| `libsuperpack.so` | 220 920 | 220 920 | **побайтово тот же** |
-| `libunwindstack_binary.so` | 11 848 | 11 800 | изменён |
-| `libwhatsapp.so` | 14 019 405 (дамп) | 8 383 928 | **−39 %**: Shortcake/ML-KEM-768 ушёл в librust |
-| `librust.so` | **нет** | 5 096 368 | **новая**: `messageOne/messageTwoOut/sessionKeyOut/responderState`, `ML-KEM-768`, `shortcake-commitment-v1`, OxidizedCurve25519 |
-| `libwhatsappmerged.so` | 8 256 680 | 6 963 952 | `Noise_XX_25519_AESGCM_SHA256` без изменений; + `mldsa65`, `mldsa87`, `Noise context is closed`, labyrinth seal’ы, Tigon MNS/QUIC Noise |
+| `libs.so` (superpack) | 13 544 024 | 14 352 736 | +808 712 B |
+| `libsuperpack.so` | 220 920 | 220 920 | byte-identical |
+| `libwhatsapp.so` | 14 019 405 (dump) | 8 383 928 | **−39 %** (Shortcake/ML-KEM-768 moved out) |
+| `librust.so` | absent | 5 096 368 | **new**: `smax_rs_stanza`, `shortcake`, ML-KEM-768, OxidizedCurve25519 |
+| `libwhatsappmerged.so` | 8 256 680 | 6 963 952 | + `mldsa65`/`mldsa87`, labyrinth seals, Tigon MNS/QUIC Noise |
 
-Распакованные runtime-библиотеки: `/data/data/com.whatsapp/files/decompressed/libs.spo/`
-(`libwhatsapp.so`, `libwhatsappmerged.so`, `librust.so`, `libcurve25519.so`).
+## 7. `_lh`
 
-## 6. XMPP / транспорт
+Formula (unchanged, from `05-integrity/_lh.md`):
 
-- Хост/порт: `g.whatsapp.net`, 443/5222 с историей порта (`C38851mi.java:42-43,61`), id порта 1/4 (`C38781mb.java:45`) — **OK**.
-- Framing — бинарный FunXMPP (словарь токенов `AbstractC41781tD.java:11-12`), не XML — **OK**.
-- `jabber:client` отсутствует и в новой, и в старой сборке — утверждение доки не подтверждается (не изменение).
-- TLS 1.3-обёртка + `WtCachedPsk` — **OK** (`C65318Td2.java:7,33`).
+```
+_lh = base64_std( SHA-256( content of <nativeLibraryDir>/<name>.so ) )
+```
 
-## 7. Что осталось непроверенным
+New facts for 2.26.44.90:
 
-| Пункт | Почему | Как проверить |
+- `nativeLibraryDir` is **empty** on the device (all libraries are delivered through the
+  superpack into `/data/data/com.whatsapp/files/decompressed/libs.spo/`), so the hashed
+  file is not one of the statically delivered `.so` files.
+- Candidate values `base64(SHA-256(content))` for the live libraries of this build:
+
+| File | Size | b64(SHA-256) |
 |---|---|---|
-| Формат ответа `att-stanza-custom` и что приходит в `p2` | тело `LX/1tc`/`LX/27b` не разобрано | Frida-хук на `17x.A04` |
-| Поле 50 `integrationAttestation` | нет Java-сеттеров | живой захват ClientPayload + нативка |
-| Порядок узлов после `<success>` | `ConnectionThread` не декомпилирован | Frida-хук на `C0T8`/`FunXMPP` |
-| `_lh` значение для 44.90 | нативная таблица строк шифрована | дамп памяти/живой `integrity_payload` |
-| Точная точка сборки ClientPayload | `HandlerThreadC08060Yt.A0y` не декомпилирован | повторный прогон jadx с `--no-skip` или smali |
+| `libs.so` | 14 352 736 | `aMTANPDS0EcApKdrlS8UtfprGt3/C1dYefbiYKFxvYQ=` |
+| `libsuperpack.so` | 220 920 | `/iTYCR1/yW4LPe6c2j1+y17Fy+RYK4bZxCAQsE2Y5F8=` |
+| `libunwindstack_binary.so` | 11 800 | `SzFuNPvhZd5A9PS/IQdQvSYLFYm+jWOueGHwst4HB2w=` |
+| `libwhatsapp.so` | 8 383 928 | `4ySx1nCRZmHIIOb5iSSVA0quBT/MIJlyqOQg9FL8gbY=` |
+| `libwhatsappmerged.so` | 6 963 952 | `C/GQ+b7wlhHckCq1SsgqG6NLJZm6rHc8T/zLwNtBXOM=` |
+| `librust.so` | 5 096 368 | `deixXA8RXOIQpBeadohQqiuxBF/jVGbSHAJ9MQtbo1o=` |
+| `libcurve25519.so` | 99 464 | `q31b65iWZ0bqE6GOjndQ73yC4p4cvV9skhzFuD7cnFk=` |
 
-## 8. Что делать с инструментом
+Verification plan: hook `mbedtls_sha256_update` / `mbedtls_sha256_finish`
+(exported by `libwhatsappmerged.so`) while `integrity_payload` is being built —
+that yields the hashed input size and the final digest.
 
-- Регистрация уже обновлена на 2.26.44.90 (см. `version-config.generated.go`).
-- Если реализуется **логин**: в построителе ClientPayload добавить поля 49/50 (номер 49 —
-  `duplexMessageStsMicros`, 50 — `integrationAttestation`), версия в `appVersion` — `2.26.44.90`.
-- AB-флаги для аттестации: 1935 (вкл.), 2067 (троттлинг), prefs `ka_stanza_sent_ts`; 2078/2079 больше не нужны.
+## 8. Still unknown
+
+| Item | Why | How to close |
+|---|---|---|
+| `_lh` value for 2.26.44.90 | blob is AES-256-CBC encrypted; authkey not captured | `mbedtls_sha256_*` hooks, or decrypt with authkey |
+| Field 50 filler | no Java setter | native analysis / live payload with AB enabled |
+| `att-stanza-custom` response format | body not decompiled | Frida hook on `X.17x.A04` (already logs `p2`) |

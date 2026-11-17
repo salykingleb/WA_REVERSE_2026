@@ -1,128 +1,114 @@
-# keystore_attestation: 2.26.35.75 → 2.26.44.90 (детальный разбор)
+# Keystore attestation in 2.26.44.90: builder vs sender
 
-English abstract: the attestation *builder* is unchanged in essence (same AB gates 1934/2074/2078/2079,
-same challenge layout, same reversed chain order), but the *sending* path is new: a separate
-"att-stanza-custom" action gated by AB 1935, throttled by AB 2067 + pref `ka_stanza_sent_ts`,
-which emits `<ib><keystore_attestation>` with message id 6.
+Detailed comparison of `keystore_attestation` between 2.26.35.75 and 2.26.44.90.
+Sources: `smali1/X/17x.smali` (builder), `smali2/X/2Eu.1.smali` (sender),
+live Frida capture `hooks/wa_agent_log_registration.txt`.
 
-Источники: `smali1/X/17x.smali` (бывший `C13D` — сборщик ключа/цепочки),
-`smali2/X/2Eu.1.smali` (бывший `RunnableC49222Eu` — отправитель).
-
-## 1. Кто собирает и кто отправляет
+## 1. Who builds and who sends
 
 | | 2.26.35.75 | 2.26.44.90 |
 |---|---|---|
-| Сборщик | `X/C13D` | `X/17x` (`smali1/X/17x.smali`, 3913 строк) |
-| Отправка | внутри логина, DTA case 10 | отдельный путь `X/2Eu`: `att-stanza-custom` → `<ib><keystore_attestation>`, id **6** |
-| Гейт | AB 1934 | AB 1934 **и** AB 1935 |
-| Троттлинг | нет | AB 2067 + pref `ka_stanza_sent_ts` |
-| Alias | AB 2074 | AB 2074 |
-| Challenge random | AB 2078 (`A0Y`) | AB 2078 (`A0Z`, `0x81e`) |
-| Окно ключа | AB 2079 (`A0Y`) | AB 2079 (`A0Z`, `0x81f`) |
+| Builder | `X/C13D` | `X/17x` (`smali1/X/17x.smali`, 3913 lines) |
+| Sending | inside the login flow, DTA case 10 | separate path `X/2Eu`: `att-stanza-custom` → `<ib><keystore_attestation>`, id **6** |
+| Gate | AB 1934 | AB 1934 **and** AB 1935 |
+| Throttling | none | AB 2067 + pref `ka_stanza_sent_ts` |
+| Key alias prefix | AB 2074 | AB 2074 (`0x81a`) |
+| Challenge random length | AB 2078 | AB 2078 (`0x81e`) |
+| Key validity window | AB 2079 | AB 2079 (`0x81f`) |
 
-> Важно: AB 2078/2079 **не удалены**. В 2.26.44.90 они читаются методом `A0Z` вместо `A0Y`,
-> поэтому grep по `A0Y(2078)` даёт 0. Реальные вхождения: `17x.smali:1336` (`0x81e`),
-> `17x.smali:605` и `1133` (`0x81f`).
+> AB 2078 and 2079 are **not removed**. In 2.26.44.90 they are read through `A0Z`
+> instead of `A0Y`, so a grep for `A0Y(2078)` returns nothing. Actual occurrences:
+> `17x.smali:1336` (`0x81e`) and `17x.smali:605`, `:1133` (`0x81f`).
 
-## 2. Challenge — байт-в-байт та же схема
+## 2. Challenge
 
-`17x.A00(Integer,[B)` (`17x.smali:1315-1421`):
+`17x.A00(Integer, byte[])` (`17x.smali:1315-1421`):
 
 ```smali
-# если p2 == null — генерируем случайную часть
+# if p2 == null: generate the random part
 invoke-static {v0}, LX/182;->A00(LX/182;)Ljava/security/SecureRandom;
-const/16 v0, 0x81e            # AB 2078 = длина random-части
+const/16 v0, 0x81e            # AB 2078 = random part length
 new-array v9, v0, [B
 invoke-virtual {v1, v9}, Ljava/util/Random;->nextBytes([B)V
 
-# сборка challenge
-invoke-static/range {v25}, LX/08q;->A00(LX/08q;)J   # скорректированные часы, мс
-div-long v0, v0, v16                                 # v16 = 0x3E8 → секунды
+# assemble the challenge
+invoke-static/range {v25}, LX/08q;->A00(LX/08q;)J   # corrected clock, ms
+div-long v0, v0, v16                                 # v16 = 0x3E8 → seconds
 invoke-static {v8}, Ljava/nio/ByteBuffer;->allocate(I)  # len(random) + 9
 invoke-virtual {v11, v8}, Ljava/nio/ByteBuffer;->order(Ljava/nio/ByteOrder;)  # BIG_ENDIAN
-invoke-virtual {v11, v0, v1}, Ljava/nio/ByteBuffer;->putLong(J)               # 8 байт времени
+invoke-virtual {v11, v0, v1}, Ljava/nio/ByteBuffer;->putLong(J)               # 8 bytes of time
 const/16 v0, 0x1f
 invoke-virtual {v11, v0}, Ljava/nio/ByteBuffer;->put(B)                        # 0x1F
-invoke-virtual {v11, v9}, Ljava/nio/ByteBuffer;->put([B)                       # random
+invoke-virtual {v11, v9}, Ljava/nio/ByteBuffer;->put([B)                       # random / p2
 invoke-virtual {v7, v0}, Landroid/security/keystore/KeyGenParameterSpec$Builder;->setAttestationChallenge([B)
 ```
 
-Итог: `challenge = uint64BE(секунды) ‖ 0x1F ‖ random(A0Z(2078))` — ровно как в 2.26.35.75.
+Result: `challenge = uint64BE(seconds) ‖ 0x1F ‖ random(AB 2078)` — the same layout as
+in 2.26.35.75.
 
-**Новое:** если `p2 != null`, случайная часть **не генерируется** — используется переданный
-массив. В новом пути `2Eu.1.smali:1036` вызывает `17x.A04(17x, Integer, byte[])`, где байты
-приходят из действия `att-stanza-custom` (`2Eu.1.smali:1018-1036`). То есть в кастомном
-узле challenge может быть серверным, а не локальным random.
+**New:** when `p2 != null` the random part is not generated; the supplied array is used.
+The custom-stanza path (`2Eu.1.smali:1036`) calls `17x.A04(17x, Integer, byte[])` with
+bytes obtained from the `att-stanza-custom` exchange, so the challenge part may be
+server-provided.
 
-## 3. Окно действия ключа
+Live capture (2.26.44.90): `p2` was **32 bytes**, e.g.
+`d9dec863ce3b7228b1c70205af5e0f7228e76c363dfeddf407a54e1987a1ba79`,
+chain length **3420 B**.
 
-`A0Z(2079)` читается дважды — при расчёте `notBefore/notAfter` (`17x.smali:605`) и в
-повторном проходе (`17x.smali:1133`). Смысл тот же, что в 2.26.35.75: `now + 2079` секунд.
+## 3. Key validity window
+
+`A0Z(2079)` is read twice — when computing `notBefore`/`notAfter` (`17x.smali:605`) and in
+the second pass (`17x.smali:1133`). Semantics are unchanged: `now + 2079` seconds.
 
 ## 4. Alias
 
-`0x81a` = AB 2074 — динамический префикс алиаса (`17x.smali:1752`, `1886`), как и раньше.
-Базовое имя — `att-gen` (`17x.smali:203`), логи `blacknoise/generating key pair with alias=`.
+`0x81a` = AB 2074, dynamic alias prefix (`17x.smali:1752`, `1886`). Base name `att-gen`
+(`17x.smali:203`), logs `blacknoise/generating key pair with alias=`.
 
-## 5. Цепочка сертификатов
+## 5. Certificate chain
 
-`17x.A03` — тот же обратный обход массива `[leaf … root]` и запись с конца, что и в
-`C13D.A03`. Формат: один blob без разделителей, root → … → leaf.
+`17x.A03` walks the `[leaf … root]` array in reverse and writes it back to front — the
+same as `C13D.A03`. The wire format is one blob without separators, root → … → leaf.
 
-## 6. Новый путь отправки (`2Eu`)
+## 6. New sending path (`2Eu`)
 
 ```
 17x.A07()                    # AB 1934
   └─ AB 1935 (0x78f)
        └─ pref ka_stanza_sent_ts + A0Z(2067) <= now/1000
-            └─ 17x.A04(...)  # сборка цепочки (challenge из att-stanza-custom)
+            └─ 17x.A04(...)  # chain assembly (challenge from att-stanza-custom)
                  ├─ null → Log.w("blacknoise: got null attestation chain in custom stanza")
                  └─ new C0T8("keystore_attestation", chainBytes, null)
                       └─ new C0T8("ib", ...) → send id 6
                       └─ pref ka_stanza_sent_ts = now/1000
 ```
 
-Строки: `2Eu.1.smali:895-1000` (гейты и троттлинг), `:1036` (сборка), `:1062` (узел),
-`:1056-1080` (обёртка `ib` и отправка).
+Lines: `2Eu.1.smali:895-1000` (gates and throttling), `:1036` (assembly), `:1062` (node),
+`:1056-1080` (`ib` wrapper and send).
 
-## 7. Что это значит для клиента
+## 7. Live capture (2.26.44.90, fresh registration)
 
-- Старый узел в логине не исчез, но появился **отдельный повторяемый** узел
-  `ib/keystore_attestation` с id 6, который шлётся не чаще, чем раз в AB 2067 секунд.
-- Для повторной отправки нужен серверный обмен `att-stanza-custom` (в нём приходит
-  материал challenge) — это новый обязательный шаг, которого не было в 2.26.35.75.
-- Формат самого DER-блоба и challenge не изменились — старый код сборки переносится 1:1.
-
-## 8. Осталось непроверенным
-
-| Пункт | Причина | Инструмент |
-|---|---|---|
-| Точный формат ответа `att-stanza-custom` (`LX/27b`) | тело метода не декомпилировано, smali есть — нужен разбор `LX/1tc`/`LX/27b` | smali/живой захват |
-| Что именно приходит в `p2` (challenge от сервера?) | не прослежено до конца | Frida-хук на `17x.A04` |
-## 9. Пойманный обмен (живой захват 2.26.44.90, Frida)
-
-Лог: hooks/wa_agent_log.txt (хук X.1sR.A05/A06 + X.17x.A04).
-
-`
+```
 [IN ] <success>
-[OUT] <iq to=s.whatsapp.net xmlns=urn:xmpp:whatsapp:push type=get id=1>
-        <config version="1">
 [OUT] <ib><unified_session id="127334115">
-[OUT] <iq to=s.whatsapp.net id=01 xmlns=w:m type=set>
-        <media_conn last_id="49829133">
-[ATTEST] mode=0 p2=d9dec863ce3b7228b1c70205af5e0f7228e76c363dfeddf407a54e1987a1ba79 (32B) -> chain 3420B
+[ATTEST] mode=0 p2=d9dec863… (32B) -> chain 3420B
 [OUT] <ib><keystore_attestation>  (3420B DER, 3082051c30820304a003020102…)
-[OUT] <iq xmlns=w:stats type=set id=02><add t="1794914537"> + 1156B блоб
-[OUT] <presence type=available>
-[OUT] <iq xmlns=w:p type=get id=03>          (prekeys)
-[OUT] <iq xmlns=w:biz type=get id=04><mobile_config …>
-[OUT] <iq xmlns=w:mex type=get id=05><trace><flow_id>…
-`
+[OUT] <iq xmlns=w:stats type=set id=02><add t="1794914537"> + 1156B blob
+```
 
-Ключевые факты:
+- `p2` — 32 bytes supplied by the caller; `SecureRandom(AB 2078)` is not used on this path.
+- Final challenge: `uint64BE(seconds) ‖ 0x1F ‖ p2(32B)` = 41 bytes.
+- Chain: 3420 bytes (2.26.35.75 live capture gave 3417).
+- The node is sent right after `<ib><unified_session>` and before `<iq xmlns=w:stats>`.
+- No attributes: `<ib><keystore_attestation>` + one binary child with the DER.
 
-- p2 (вторая половина challenge) — **32 байта, передаются вызывающим кодом**, SecureRandom(AB 2078) в этом пути не используется.
-- Итоговый challenge = uint64BE(секунды) ‖ 0x1F ‖ p2(32B) — 41 байт.
-- Цепочка сертификатов — **3420 байт** (в 2.26.35.75 живой захват давал 3417 байт).
-- Узел keystore_attestation идёт **сразу после** <ib><unified_session> и перед <iq xmlns=w:stats>.
-- Атрибутов у узла нет: <ib><keystore_attestation> + один бинарный ребёнок с DER.
+Ab-flag summary for 2.26.44.90:
+
+| AB | Hex | Where | Meaning |
+|---|---|---|---|
+| 2074 | `0x81a` | `17x.smali:1752,1886` | dynamic alias prefix |
+| 2078 | `0x81e` | `17x.smali:1336` | challenge random part length |
+| 2079 | `0x81f` | `17x.smali:605,1133` | key validity window |
+| 1934 | `0x78e` | `17x.smali:3203` (`A07`) | attestation gate |
+| 1935 | `0x78f` | `2Eu.1.smali:912` | custom stanza gate |
+| 2067 | `0x813` | `2Eu.1.smali:972` | resend throttling |

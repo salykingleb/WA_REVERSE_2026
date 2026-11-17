@@ -162,3 +162,4 @@ It is recommended to start reading with [01-flow-overview.md](01-flow-overview.m
 
 ### [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md) — Full delta 2.26.35.75 → 2.26.44.90 (login and post-login)
 
+### [14-post-login-capture-2.26.44.90.md](14-post-login-capture-2.26.44.90.md) — Live post-login capture of 2.26.44.90: node order, attributes, blobs
