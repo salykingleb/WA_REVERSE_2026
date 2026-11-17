@@ -167,9 +167,8 @@ New facts for 2.26.44.90:
 | `librust.so` | 5 096 368 | `deixXA8RXOIQpBeadohQqiuxBF/jVGbSHAJ9MQtbo1o=` |
 | `libcurve25519.so` | 99 464 | `q31b65iWZ0bqE6GOjndQ73yC4p4cvV9skhzFuD7cnFk=` |
 
-Verification plan: hook `mbedtls_sha256_update` / `mbedtls_sha256_finish`
-(exported by `libwhatsappmerged.so`) while `integrity_payload` is being built —
-that yields the hashed input size and the final digest.
+To confirm the value, the SHA-256 primitives used while integrity_payload is built can be
+traced: the input size and the final digest identify the hashed file.
 
 ## 8. Still unknown
 
