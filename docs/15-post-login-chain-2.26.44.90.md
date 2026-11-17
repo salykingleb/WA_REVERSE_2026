@@ -545,6 +545,87 @@ AB **20160**/**20162**; queries routed to Pando GraphQL bypass this XML path.
 
 ---
 
+## 19. Additional stanza families observed in the same burst
+
+The capture contains **22 distinct `xmlns` families**, not only the login-critical ones.
+All of them are listed here; the ones already detailed above are referenced, the rest are
+described at wire level (their builders were not reverse-engineered to the same depth).
+
+| xmlns | count | What it is | Observed parameters |
+|---|---|---|---|
+| `w:mex` | 35 | MEX/GraphQL queries | §18 |
+| `w:stats` | 21 | WAMSys fieldstats | §14 |
+| `tos` | 3 | ToS + disclosures | §5, §11.1 |
+| `status` | 3 | status/privacy | `iq id=3 xmlns=status type=set` + `<status>` child; `privacy` get |
+| `blocklist` | 3 | blocklist fetch | `<iq … xmlns=blocklist type=get><item dhash=…/></iq>` |
+| `w:comms:chat` | 3 | blocking status | §15.1 |
+| `w:p` | 3 | privacy/PSA | `iq type=get xmlns=w:p to=s.whatsapp.net` |
+| `urn:xmpp:whatsapp:push` | 2 | push config + registration | §1, §10 |
+| `privatestats` | 2 | ACS v1 / v2 | §4, §17 |
+| `w:b` | 2 | broadcast/business lists | §11.2 |
+| `newsletter` | 2 | my_addons | §11.3 |
+| `usync` | 2 | **contact sync** | `<usync sid="ContactSyncHelperKt/sync_sid_multi_iq_<uuid>"><index>0</index><last>true</last><mode>full</mode><context>registration\|background</context><query><contact/><addressing_mode>lid</addressing_mode></query></usync>`; the background pass adds `allow_mutation="true"` |
+| `urn:xmpp:whatsapp:account` | 2 | account crypto bootstrap | `<crypto action="create">` + 32-byte `google` key |
+| `w:auth:backup:token` | 2 | backup token registration | `<token>20 bytes</token><type>blockstore` / `foa</type>` |
+| `w:m` | 1 | media connection | §3 |
+| `encrypt` | 1 | prekeys | §6 |
+| `w:profile:picture` | 1 | profile picture query | `<iq … target="222583156932850" lid=… type=get><picture type="preview"/></iq>` |
+| `passive` | 1 | passive-mode activation | `<iq id=4 xmlns=passive type=set to=s.whatsapp.net><active type="available"/></iq>` |
+| `disappearing_mode` | 1 | disappearing-mode state | `<iq … xmlns=disappearing_mode type=get>` |
+| `w:biz` | 1 | business mobile config | `<mobile_config name="biz_report_reasons" v="1">` |
+| `w:comms` | 1 | QP telemetry | §15.2 |
+| `optoutlist` | 1 | marketing opt-out | §15.3 |
+
+### 19.1 Contact sync (`usync`)
+
+Two passes are sent right after login:
+
+```xml
+<iq to="s.whatsapp.net" xmlns="usync" id="019" type="get">
+  <usync sid="ContactSyncHelperKt/sync_sid_multi_iq_d4217284-e406-430f-81c7-f6b314b408e8">
+    <index>0</index>
+    <last>true</last>
+    <mode>full</mode>
+    <context>registration</context>
+    <query>
+      <contact/>
+      <addressing_mode>lid</addressing_mode>
+    </query>
+  </usync>
+</iq>
+```
+
+- `sid` — `ContactSyncHelperKt/sync_sid_multi_iq_<uuid>` — the sync session id, one per pass.
+- `mode=full`, `index=0`, `last=true` — single-chunk full sync.
+- `context=registration` for the first pass, `context=background` for the later one; the
+  background pass adds `allow_mutation="true"`.
+- `addressing_mode=lid` — contacts are addressed by LID, not by phone number.
+
+### 19.2 Account crypto (`urn:xmpp:whatsapp:account`)
+
+```xml
+<iq xmlns="urn:xmpp:whatsapp:account" type="get" id="01d">
+  <crypto action="create">
+    <google>32 bytes</google>
+    <t>1794915236</t>
+  </crypto>
+</iq>
+```
+
+- `action=create` — creates the account-level crypto state; `google` is a 32-byte key
+  blob; `t` is the server-corrected timestamp.
+
+### 19.3 Backup token (`w:auth:backup:token`)
+
+```xml
+<iq xmlns="w:auth:backup:token" type="set" id="02a">
+  <token>20 bytes</token>
+  <type>blockstore</type>
+</iq>
+```
+
+- Two tokens are registered: `type=blockstore` and `type=foa` (Facebook account), 20 bytes each.
+
 ## Coverage notes
 
 - Raw capture: 6008 lines, 5845 outgoing writes, 110 incoming nodes, 812 prekeys,
