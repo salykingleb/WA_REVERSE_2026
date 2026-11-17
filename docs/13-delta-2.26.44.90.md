@@ -1,17 +1,8 @@
-# Delta: 2.26.35.75 → 2.26.44.90 (registration, login, post-login)
+# Delta: 2.26.35.75 -> 2.26.44.90 (registration, login, post-login)
 
-Re-verification of this documentation against **2.26.44.90 (versionCode 264409011)**,
-pulled from a live device (SM-A325F, Android 13) and analysed statically (jadx, smali,
-native libraries) and dynamically (Frida).
-
-| Artifact | Location |
-|---|---|
-| APK | `apk_update/pers_2.26.44.90_base.apk` (147 363 498 B) |
-| jadx tree | `jadx_264409011/sources` (83 889 classes, 234 decompilation failures) |
-| smali | `smali1` (classes.dex), `smali2` (classes2.dex) |
-| Native libs | `natives_new/` + `natives_new/decompressed/` (runtime superpack) |
-| Live capture | `hooks/wa_agent_log_registration.txt` (registration, 5806 lines) |
-| Frida agent | `hooks/agent/agent.ts` (compiled with `frida-java-bridge`) |
+Verification against **2.26.44.90 (versionCode 264409011)**,
+based on the application package of that build, its decompiled code and native libraries,
+and live traffic of the registration and the first login on a SM-A325F (Android 13).
 
 ## 1. Registration
 
@@ -59,7 +50,7 @@ sets differ in `RECEIVE_SMS`, `*.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`,
 missing/0, and the whole parameter is gated by AB 39257 (`X/K8v.A0R`). Live value on the
 test device: `30`. Details: [08-device-status/first-api-level.md](08-device-status/first-api-level.md).
 
-### 1.3. Runtime class names (jadx vs ART)
+### 1.3. Runtime class names
 
 jadx prefixes obfuscated names with `C<id>`; at runtime the names are the original ones:
 
@@ -186,4 +177,4 @@ that yields the hashed input size and the final digest.
 |---|---|---|
 | `_lh` value for 2.26.44.90 | blob is AES-256-CBC encrypted; authkey not captured | `mbedtls_sha256_*` hooks, or decrypt with authkey |
 | Field 50 filler | no Java setter | native analysis / live payload with AB enabled |
-| `att-stanza-custom` response format | body not decompiled | Frida hook on `X.17x.A04` (already logs `p2`) |
+| `att-stanza-custom` response format | body not decompiled | trace `X.17x.A04` on a live session |

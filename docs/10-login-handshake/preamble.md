@@ -150,7 +150,7 @@ name and the mixing in of the preamble are covered in the "Noise modes" chapter 
 
 ## 4. Version 2.26.44.90 (264409011)
 
-Re-verified against the new build (`jadx_264409011`, classes.dex smali):
+Verified against the 2.26.44.90 build:
 
 - The preamble bytes are **unchanged**: `X/C40461qe.A04()` → `{87, 65, 6, 3}`.
 - The writer moved out of the `NoiseSocket` constructor into the state machine

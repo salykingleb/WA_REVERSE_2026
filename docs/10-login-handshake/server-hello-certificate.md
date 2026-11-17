@@ -151,7 +151,7 @@ succeeds the key lives in memory; the next connection with it will go resume-IK
 
 ## 4. Version 2.26.44.90 (264409011)
 
-Re-verified against the new build:
+Verified against the 2.26.44.90 build:
 
 - Certificate **v6** is unchanged: `BW5{leaf=1,intermediate=2}`, `BW4{details=1,signature=2}`,
   `Baq{serial=1,issuerSerial=2,key=3,notBefore=4,notAfter=5}` — the `newMessageInfo`

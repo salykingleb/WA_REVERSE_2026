@@ -1,14 +1,13 @@
 # Keystore attestation in 2.26.44.90: builder vs sender
 
 Detailed comparison of `keystore_attestation` between 2.26.35.75 and 2.26.44.90.
-Sources: `smali1/X/17x.smali` (builder), `smali2/X/2Eu.1.smali` (sender),
-live Frida capture `hooks/wa_agent_log_registration.txt`.
+Builder: `X/17x`. Sender: `X/2Eu`. Wire data: live login traffic of 2.26.44.90.
 
 ## 1. Who builds and who sends
 
 | | 2.26.35.75 | 2.26.44.90 |
 |---|---|---|
-| Builder | `X/C13D` | `X/17x` (`smali1/X/17x.smali`, 3913 lines) |
+| Builder | `X/C13D` | `X/17x` |
 | Sending | inside the login flow, DTA case 10 | separate path `X/2Eu`: `att-stanza-custom` → `<ib><keystore_attestation>`, id **6** |
 | Gate | AB 1934 | AB 1934 **and** AB 1935 |
 | Throttling | none | AB 2067 + pref `ka_stanza_sent_ts` |
@@ -18,13 +17,13 @@ live Frida capture `hooks/wa_agent_log_registration.txt`.
 
 > AB 2078 and 2079 are **not removed**. In 2.26.44.90 they are read through `A0Z`
 > instead of `A0Y`, so a grep for `A0Y(2078)` returns nothing. Actual occurrences:
-> `17x.smali:1336` (`0x81e`) and `17x.smali:605`, `:1133` (`0x81f`).
+> `X/17x:1336` (`0x81e`) and `X/17x:605`, `:1133` (`0x81f`).
 
 ## 2. Challenge
 
-`17x.A00(Integer, byte[])` (`17x.smali:1315-1421`):
+`17x.A00(Integer, byte[])` (`X/17x:1315-1421`):
 
-```smali
+```
 # if p2 == null: generate the random part
 invoke-static {v0}, LX/182;->A00(LX/182;)Ljava/security/SecureRandom;
 const/16 v0, 0x81e            # AB 2078 = random part length
@@ -47,7 +46,7 @@ Result: `challenge = uint64BE(seconds) ‖ 0x1F ‖ random(AB 2078)` — the sam
 in 2.26.35.75.
 
 **New:** when `p2 != null` the random part is not generated; the supplied array is used.
-The custom-stanza path (`2Eu.1.smali:1036`) calls `17x.A04(17x, Integer, byte[])` with
+The custom-stanza path (`X/2Eu:1036`) calls `17x.A04(17x, Integer, byte[])` with
 bytes obtained from the `att-stanza-custom` exchange, so the challenge part may be
 server-provided.
 
@@ -57,13 +56,13 @@ chain length **3420 B**.
 
 ## 3. Key validity window
 
-`A0Z(2079)` is read twice — when computing `notBefore`/`notAfter` (`17x.smali:605`) and in
-the second pass (`17x.smali:1133`). Semantics are unchanged: `now + 2079` seconds.
+`A0Z(2079)` is read twice — when computing `notBefore`/`notAfter` (`X/17x:605`) and in
+the second pass (`X/17x:1133`). Semantics are unchanged: `now + 2079` seconds.
 
 ## 4. Alias
 
-`0x81a` = AB 2074, dynamic alias prefix (`17x.smali:1752`, `1886`). Base name `att-gen`
-(`17x.smali:203`), logs `blacknoise/generating key pair with alias=`.
+`0x81a` = AB 2074, dynamic alias prefix (`X/17x:1752`, `1886`). Base name `att-gen`
+(`X/17x:203`), logs `blacknoise/generating key pair with alias=`.
 
 ## 5. Certificate chain
 
@@ -83,7 +82,7 @@ same as `C13D.A03`. The wire format is one blob without separators, root → …
                       └─ pref ka_stanza_sent_ts = now/1000
 ```
 
-Lines: `2Eu.1.smali:895-1000` (gates and throttling), `:1036` (assembly), `:1062` (node),
+Lines: `X/2Eu:895-1000` (gates and throttling), `:1036` (assembly), `:1062` (node),
 `:1056-1080` (`ib` wrapper and send).
 
 ## 7. Live capture (2.26.44.90, fresh registration)
@@ -106,9 +105,9 @@ Ab-flag summary for 2.26.44.90:
 
 | AB | Hex | Where | Meaning |
 |---|---|---|---|
-| 2074 | `0x81a` | `17x.smali:1752,1886` | dynamic alias prefix |
-| 2078 | `0x81e` | `17x.smali:1336` | challenge random part length |
-| 2079 | `0x81f` | `17x.smali:605,1133` | key validity window |
-| 1934 | `0x78e` | `17x.smali:3203` (`A07`) | attestation gate |
-| 1935 | `0x78f` | `2Eu.1.smali:912` | custom stanza gate |
-| 2067 | `0x813` | `2Eu.1.smali:972` | resend throttling |
+| 2074 | `0x81a` | `X/17x:1752,1886` | dynamic alias prefix |
+| 2078 | `0x81e` | `X/17x:1336` | challenge random part length |
+| 2079 | `0x81f` | `X/17x:605,1133` | key validity window |
+| 1934 | `0x78e` | `X/17x:3203` (`A07`) | attestation gate |
+| 1935 | `0x78f` | `X/2Eu:912` | custom stanza gate |
+| 2067 | `0x813` | `X/2Eu:972` | resend throttling |

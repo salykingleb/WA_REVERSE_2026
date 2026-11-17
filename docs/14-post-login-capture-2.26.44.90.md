@@ -1,115 +1,64 @@
-# Post-login traffic of 2.26.44.90 (live capture)
+# Post-login traffic of 2.26.44.90
 
-Live capture of the first XMPP login right after registering a new account on
+The traffic of the first XMPP login right after registering a new account on
 **2.26.44.90 (264409011)**, device SM-A325F, Android 13.
 
-Raw log: hooks/wa_agent_log_registration.txt (6008 lines, 5845 writes, 110 incoming nodes).
+The session contains 22 distinct `xmlns` families, 812 one-time prekeys in a single upload,
+21 `w:stats` batches and 36 `w:mex` queries in the first two minutes. The per-parameter
+analysis of every node is in
+[15-post-login-chain-2.26.44.90.md](15-post-login-chain-2.26.44.90.md).
 
-> **Coverage.** This document is a curated timeline of the capture, not the raw log.
-> The raw log stays on the analysis machine. For the per-parameter code of every node see
-> [15-post-login-chain-2.26.44.90.md](15-post-login-chain-2.26.44.90.md).
+## 1. Order of the nodes
 
-## 1. How it was captured
-
-Frida 17 agent compiled with `frida-java-bridge` (`hooks/agent/agent.ts`) and loaded
-through `frida-compile`; plain `Java.use` in a Python `create_script` does not work on
-Frida 17 because the bridges are no longer bundled with the runtime
-([frida docs](https://frida.re/docs/bridges/)).
-
-Hooked methods:
-
-| Target | Runtime name | What it yields |
-|---|---|---|
-| decoder | `X.14q.A08()` | incoming node tags |
-| encoder | `X.1sR.A05(OutputStream, String, boolean, boolean)` | every string written: tags, attribute keys and values |
-| encoder | `X.1sR.A06(OutputStream, byte[], boolean)` | binary payload sizes and hex heads |
-| payload provider | `X.1oJ.A00(X.1oI)` | ClientPayload assembly events |
-| payload bytes | `X.1oO.toByteArray()` | full ClientPayload bytes for offline protobuf parsing |
-| attestation | `X.17x.A04(X.17x, Integer, byte[])` | challenge `p2` and chain length |
-
-Note: reading node fields through reflection (`getDeclaredFields`, `A0Q()`, `A0R()`) makes
-WhatsApp crash with SIGSEGV; hooking the writers `A05`/`A06` avoids touching node objects
-and is stable.
-
-## 2. Timeline
-
-`W<n>` = global write sequence number in the capture; sizes are bytes of the following
-binary write.
-
-| # | Dir | Node | Key data |
+| # | Direction | Node | Key data |
 |---|---|---|---|
-| — | in | `<success>` | handshake completed |
-| W1 | out | `iq` | `to=s.whatsapp.net`, `xmlns=urn:xmpp:whatsapp:push`, `type=get`, `id=1`, child `config version="1"` |
-| W13 | out | `ib` → `unified_session` | `id=127334115` |
-| W88 | out | `iq` | `xmlns=w:m`, `type=set`, `id=01`, child `media_conn last_id="49829133"` |
-| W98 | out | `iq` → `sign_credential` | ACS v1: `version=1`, `blinded_credential` 32 B |
-| W118 | out | `iq` → `encrypt` | prekey upload: `identity` 32 B, `registration`=regid, `type`, `skey`, `list` |
-| W4203 | out | `ib` → `keystore_attestation` | **3420 B DER** (single blob, no attributes) |
-| W4235 | out | `num_acc` | account number field |
-| W4242 | out | `ib` → `integrity_payload` | **1024 B base64** = 768 B blob (`IV[16] ‖ AES-CBC`) |
-| W4287 | out | `ib` → `gpia` → `jws` | response to the server integrity nonce |
-| W4447 | out | `w:b` → `lists` | business lists |
-| W4479 | out | `newsletter` | newsletter metadata |
-| W4485 | out | `my_addons` | addon list |
-| W4567 | out | `tos` | terms-of-service version |
-| W4571 | out | `get_user_disclosures` | disclosure query |
-| W4764 | out | `presence` | `type=available` |
-| W4963 | out | `sync_results` | initial sync result |
-| W5090 | out | `iq` `xmlns=w:stats` | `add t=…` + encrypted stats blob |
-| W5104 | out | `w:comms` → `event` | `promotion_id`, `timestamp_sec` |
-| W5152 | out | `sign_credential` | ACS v2: `version=2`, `project_name`, `config_id` |
-| W5360 | out | `ent:silent_nonce` | 16 B nonce |
-| — | — | `w:mex` / `trace` / `query_id` | GraphQL-style requests, repeated ~35 times |
+| 1 | in | `<success>` | handshake completed |
+| 2 | out | `iq` | `to=s.whatsapp.net`, `xmlns=urn:xmpp:whatsapp:push`, `type=get`, `id=1`, child `config version="1"` |
+| 3 | out | `ib` → `unified_session` | `id=127334115` |
+| 4 | out | `iq` | `xmlns=w:m`, `type=set`, `id=01`, child `media_conn last_id="49829133"` |
+| 5 | out | `iq` → `sign_credential` | ACS v1: `version=1`, `blinded_credential` 32 B |
+| 6 | out | `iq` → `tos` | `request/notice id=20210210` |
+| 7 | out | `iq` → `encrypt` | prekeys: `identity` 32 B, `registration` 4 B, `type=05`, `list` (812 keys), `skey` + 64-byte signature |
+| 8 | out | `ib` → `keystore_attestation` | 3420 B DER |
+| 9 | in/out | `ib` → `gpia` | `request nonce` → `jws` |
+| 10 | out | `config` (`push`) | `num_acc=2`, `platform=gcm` |
+| 11 | out | `ib` → `integrity_payload` | 768 B blob (1024 base64) |
+| 12 | out | `w:b` → `lists` | broadcast lists |
+| 13 | out | `newsletter` → `my_addons` | `limit=1000`, and the status variant `type=status limit=100` |
+| 14 | out | `get_user_disclosures` | `t=1794915236` |
+| 15 | out | `usync` | contact sync, `context=registration`, `addressing_mode=lid` |
+| 16 | out | `urn:xmpp:whatsapp:account` | `crypto action=create`, 32-byte `google` key |
+| 17 | out | `presence` | `type=available` |
+| 18 | out | `sync_results` | `eval_ts_sec=1794915238` |
+| 19 | out | `iq` `w:stats` | `add t=…` + encrypted WAMSys blob (830–1278 B) |
+| 20 | out | `w:comms:chat` | `query/blocking_status` |
+| 21 | out | `w:comms` → `event` | `promotion_id`, `timestamp_sec`, `logdata`, `type=impression` |
+| 22 | out | `ent:silent_nonce` | 16-byte nonce (inbound notification type, answered by an ack) |
+| 23 | out | `sign_credential` | ACS v2: `version=2`, `project_name=WA_StatusMusic` |
+| 24 | out | `w:mex` | `trace/flow_id` + `query query_id` (JSON body) |
 
-Unique node/attribute names observed (heuristic extraction, 80 raw tokens):
+Nodes are emitted from several threads, so the wire order may interleave; the table is the
+order in which the client assembled them.
 
-```
-addressing_mode, allow_mutation, config, encrypt, ent:silent_nonce, event,
-get_user_disclosures, gpia, ib, identity, impression, integrity_payload, iq, jws,
-keystore_attestation, limit, lists, logdata, media_conn, missing, my_addons,
-newsletter, num_acc, optoutlist, presence, promotion_id, query_id, registration,
-sid, sign_credential, sync_results, timestamp_sec, tos, trace, unified_session,
-w:b, w:comms, w:mex, w:stats
-```
+## 2. What happens after `<success>` — summary
 
-## 3. What happens after `<success>` — observations
+1. **Push/config bootstrap**: push config request, `unified_session`, media connection.
+2. **Key material**: the prekey upload with the identity key, the signed prekey and 812
+   one-time prekeys.
+3. **Attestation**: one `keystore_attestation` blob (3420 bytes) with a 32-byte caller
+   challenge; sent right after `unified_session`, before the first stats batch.
+4. **Integrity**: `integrity_payload` (768 bytes of encrypted JSON) in the same burst;
+   `gpia/jws` answers the server integrity nonce and carries a Play Integrity JWS.
+5. **Account setup**: `num_acc`/`platform`, `tos`, `get_user_disclosures`, `my_addons`,
+   `w:b lists`, `usync` contact sync, account crypto and backup tokens.
+6. **Sync**: `sync_results` and the `w:stats` batches run in parallel with the bootstrap.
+7. **Comms**: the promotions/telemetry channel (`w:comms:chat`, `event`, `optoutlist`).
+8. **ACS**: v1 immediately after login, v2 later in the session.
+9. **Silent nonce**: `ent:silent_nonce` is an inbound notification; the client answers with
+   an ack.
 
-1. **Push/config bootstrap**: the client immediately asks for push config (`iq` with
-   `urn:xmpp:whatsapp:push`) and reports `unified_session`, then registers the media
-   connection (`w:m media_conn`).
-2. **Key material**: the prekey upload (`<iq xmlns="encrypt">`) contains the identity key,
-   the signed prekey (`skey`), the registration id and the prekey list — it is sent within
-   the first seconds, before most other stanzas.
-3. **Attestation**: `keystore_attestation` is sent once, as a single binary blob of
-   3420 bytes; the challenge random part `p2` (32 bytes) comes from the caller, not from
-   `SecureRandom`.
-4. **Integrity**: `integrity_payload` is 768 bytes of encrypted JSON (1024 base64 chars);
-   it is sent in the same burst. `gpia`/`jws` is a *response* to the server's
-   `<ib><gpia><request nonce=…>` and carries a Play Integrity JWS.
-5. **Account setup**: `num_acc`, `tos`, `get_user_disclosures`, `my_addons`,
-   `newsletter`, `w:b lists` — these are the account/business bootstrap queries that were
-   not present in the 2.26.35.75 documentation.
-6. **Sync**: `sync_results` and the `w:stats` batches (encrypted blobs, 800–1200 B) run in
-   parallel with the bootstrap.
-7. **Comms/marketing**: `w:comms event` with `promotion_id` and `timestamp_sec`,
-   `logdata`, `impression`, `optoutlist` — a promotions/telemetry channel that is new to
-   the documentation.
-8. **ACS**: two variants are visible — v1 (`sign_credential version=1`,
-   `blinded_credential` 32 B) right after login, and v2 (`version=2`, `project_name`,
-   `config_id`) later in the session, matching `acs-privatestats.md`.
-9. **Silent nonce**: `ent:silent_nonce` (16 B) is exchanged server→client, presumably for
-   ent-tier verification.
+## 3. Related documents
 
-## 4. Reproduce
-
-```bash
-# on the PC
-python hooks/agent/run_agent.py         # spawns / re-attaches, writes hooks/wa_agent_log.txt
-```
-
-Then register or log in on the device; the log is appended.
-
-Companion documents:
-
-- [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md) — full delta versus 2.26.35.75.
+- [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md) — delta versus 2.26.35.75.
+- [15-post-login-chain-2.26.44.90.md](15-post-login-chain-2.26.44.90.md) — per-parameter builders.
 - [12-post-login/keystore-attestation-2.26.44.90.md](12-post-login/keystore-attestation-2.26.44.90.md) — attestation details.

@@ -5,7 +5,7 @@
 `_lh` is a NEW field: in the _gi parameter of version 2.26.35.75 it is ABSENT (it is not in the audit of the live 35.75
 capture), and in 2.26.37.73 (versionCode 263707322) it appeared in **integrity_payload** — the blob that the
 client sends immediately after the first XMPP login following registration, in response to the server stanza
-`<safetynet><integrity nonce='ATbE74Q…'>` (the native call `jvidispatchIOOOO` **id=5** in the Frida log).
+`<safetynet><integrity nonce='ATbE74Q…'>` (the native call `jvidispatchIOOOO` **id=5** in the login traffic).
 
 The exact key order of the 2.26.37.73 integrity_payload (a live login dump of 2026-09-28):
 
@@ -138,29 +138,27 @@ was not created → `failed_url_creation`; the hash did not assemble → `failed
 2. Where did the file in nativeLibraryDir come from at the first login and why is it gone now (unpacking
    on the first start with subsequent deletion? a separate split?).
 
-## 2.26.44.90 — проверка на новой сборке (17.11.2026)
+## 2.26.44.90
 
-Проверено на устройстве SM-A325F (root), сборка 2.26.44.90 (264409011):
+- `nativeLibraryDir` is empty on the device: `/data/app/…/lib/arm64/` contains no `.so`
+  files — the libraries are delivered through the superpack into
+  `/data/data/com.whatsapp/files/decompressed/libs.spo/`. The "empty directory" paradox
+  observed on 2.26.37.73 therefore applies to this build as well.
+- Candidate values of `base64(SHA-256(content))` for this build (to match against a
+  decrypted `_lh`):
 
-- **
-ativeLibraryDir пуст**: /data/app/~~LDtUTqZfrSo7WyVCcPVJ0Q==/com.whatsapp-4rSm-eCgG9gd7va7DyqMfg==/lib/arm64/
-  содержит только . и .. — ни одного .so. То есть «парадокс дампа» из 37.73 воспроизводится и здесь:
-  хэшируемого файла в каталоге нет, реальные библиотеки приходят суперпаком в
-  /data/data/com.whatsapp/files/decompressed/libs.spo/.
-- Кандидаты 64(SHA-256(содержимое)) для 2.26.44.90 (для сверки с расшифрованным _lh):
-
-| Файл | Размер | b64(SHA-256) |
+| File | Size | b64(SHA-256) |
 |---|---|---|
-| libs.so (суперпак) | 14 352 736 | MTANPDS0EcApKdrlS8UtfprGt3/C1dYefbiYKFxvYQ= |
-| libsuperpack.so | 220 920 | /iTYCR1/yW4LPe6c2j1+y17Fy+RYK4bZxCAQsE2Y5F8= |
-| libunwindstack_binary.so | 11 800 | SzFuNPvhZd5A9PS/IQdQvSYLFYm+jWOueGHwst4HB2w= |
-| libwhatsapp.so | 8 383 928 | 4ySx1nCRZmHIIOb5iSSVA0quBT/MIJlyqOQg9FL8gbY= |
-| libwhatsappmerged.so | 6 963 952 | C/GQ+b7wlhHckCq1SsgqG6NLJZm6rHc8T/zLwNtBXOM= |
-| librust.so | 5 096 368 | deixXA8RXOIQpBeadohQqiuxBF/jVGbSHAJ9MQtbo1o= |
-| libcurve25519.so | 99 464 | q31b65iWZ0bqE6GOjndQ73yC4p4cvV9skhzFuD7cnFk= |
+| `libs.so` (superpack) | 14 352 736 | `aMTANPDS0EcApKdrlS8UtfprGt3/C1dYefbiYKFxvYQ=` |
+| `libsuperpack.so` | 220 920 | `/iTYCR1/yW4LPe6c2j1+y17Fy+RYK4bZxCAQsE2Y5F8=` |
+| `libunwindstack_binary.so` | 11 800 | `SzFuNPvhZd5A9PS/IQdQvSYLFYm+jWOueGHwst4HB2w=` |
+| `libwhatsapp.so` | 8 383 928 | `4ySx1nCRZmHIIOb5iSSVA0quBT/MIJlyqOQg9FL8gbY=` |
+| `libwhatsappmerged.so` | 6 963 952 | `C/GQ+b7wlhHckCq1SsgqG6NLJZm6rHc8T/zLwNtBXOM=` |
+| `librust.so` | 5 096 368 | `deixXA8RXOIQpBeadohQqiuxBF/jVGbSHAJ9MQtbo1o=` |
+| `libcurve25519.so` | 99 464 | `q31b65iWZ0bqE6GOjndQ73yC4p4cvV9skhzFuD7cnFk=` |
 
-- Значение _lh из живого integrity_payload 2.26.44.90 (768 байт, base64) не извлекалось: блоб
-  зашифрован общим конвертом (AES-256-CBC, ключ SHA256(std-base64(authkey))), а uthkey сессии не снимался.
-- Как подтвердить: хук на mbedtls_sha256_update/mbedtls_sha256_finish (экспортированы в
-  libwhatsappmerged.so) на момент отправки integrity_payload даёт и вход (размер файла), и итоговый
-  дайджест; после этого кандидат из таблицы выше определяется однозначно.
+- The live `_lh` was not extracted: the value sits inside the encrypted `integrity_payload`
+  (768-byte blob, AES-256-CBC with the key `SHA256(std-base64(authkey))`), and the session
+  authkey was not available.
+- To confirm the value, the SHA-256 primitives used while `integrity_payload` is built can
+  be traced: the input size and the final digest identify the file from the table.
