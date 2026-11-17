@@ -163,3 +163,10 @@ It is recommended to start reading with [01-flow-overview.md](01-flow-overview.m
 ### [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md) — Full delta 2.26.35.75 → 2.26.44.90 (login and post-login)
 
 ### [14-post-login-capture-2.26.44.90.md](14-post-login-capture-2.26.44.90.md) — Live post-login capture of 2.26.44.90: node order, attributes, blobs
+
+### [15-post-login-chain-2.26.44.90.md](15-post-login-chain-2.26.44.90.md) — Post-login chain, step by step: every node and parameter of 2.26.44.90
+
+### New device parameter
+| Document | Title |
+|---|---|
+| [`08-device-status/first-api-level.md`](08-device-status/first-api-level.md) | `first_api_level`: API level the device shipped with (AB 39257), new in 2.26.44.90 |

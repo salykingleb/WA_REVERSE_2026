@@ -51,7 +51,15 @@ Changes versus 2.26.35.75: `android.permission.BLUETOOTH` and
 sets differ in `RECEIVE_SMS`, `*.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`,
 `*.permission.BROADCAST`, `*.permission.MAPS_RECEIVE`.
 
-### 1.2. Runtime class names (jadx vs ART)
+### 1.2. New parameter: `first_api_level`
+
+2.26.44.90 adds `first_api_level` to the registration parameter map (absent in
+2.26.35.75). Value = the system property `ro.product.first_api_level`
+(`X/AbstractC43828JXg.A00()`), a decimal integer; the key is omitted when the property is
+missing/0, and the whole parameter is gated by AB 39257 (`X/K8v.A0R`). Live value on the
+test device: `30`. Details: [08-device-status/first-api-level.md](08-device-status/first-api-level.md).
+
+### 1.3. Runtime class names (jadx vs ART)
 
 jadx prefixes obfuscated names with `C<id>`; at runtime the names are the original ones:
 
