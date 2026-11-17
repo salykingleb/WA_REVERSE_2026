@@ -99,3 +99,30 @@ invoke-virtual {v7, v0}, Landroid/security/keystore/KeyGenParameterSpec$Builder;
 |---|---|---|
 | Точный формат ответа `att-stanza-custom` (`LX/27b`) | тело метода не декомпилировано, smali есть — нужен разбор `LX/1tc`/`LX/27b` | smali/живой захват |
 | Что именно приходит в `p2` (challenge от сервера?) | не прослежено до конца | Frida-хук на `17x.A04` |
+## 9. Пойманный обмен (живой захват 2.26.44.90, Frida)
+
+Лог: hooks/wa_agent_log.txt (хук X.1sR.A05/A06 + X.17x.A04).
+
+`
+[IN ] <success>
+[OUT] <iq to=s.whatsapp.net xmlns=urn:xmpp:whatsapp:push type=get id=1>
+        <config version="1">
+[OUT] <ib><unified_session id="127334115">
+[OUT] <iq to=s.whatsapp.net id=01 xmlns=w:m type=set>
+        <media_conn last_id="49829133">
+[ATTEST] mode=0 p2=d9dec863ce3b7228b1c70205af5e0f7228e76c363dfeddf407a54e1987a1ba79 (32B) -> chain 3420B
+[OUT] <ib><keystore_attestation>  (3420B DER, 3082051c30820304a003020102…)
+[OUT] <iq xmlns=w:stats type=set id=02><add t="1794914537"> + 1156B блоб
+[OUT] <presence type=available>
+[OUT] <iq xmlns=w:p type=get id=03>          (prekeys)
+[OUT] <iq xmlns=w:biz type=get id=04><mobile_config …>
+[OUT] <iq xmlns=w:mex type=get id=05><trace><flow_id>…
+`
+
+Ключевые факты:
+
+- p2 (вторая половина challenge) — **32 байта, передаются вызывающим кодом**, SecureRandom(AB 2078) в этом пути не используется.
+- Итоговый challenge = uint64BE(секунды) ‖ 0x1F ‖ p2(32B) — 41 байт.
+- Цепочка сертификатов — **3420 байт** (в 2.26.35.75 живой захват давал 3417 байт).
+- Узел keystore_attestation идёт **сразу после** <ib><unified_session> и перед <iq xmlns=w:stats>.
+- Атрибутов у узла нет: <ib><keystore_attestation> + один бинарный ребёнок с DER.
