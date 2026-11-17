@@ -1,6 +1,6 @@
 ﻿# Versions covered by this reverse engineering
 
-| Version | versionCode | Status | Coverage |
+| Version | versionCode | Status | Scope |
 |---|---|---|---|
 | **2.26.35.75** | 263507522 | base, full reverse | all documents, live registration and first login captures |
 | 2.26.37.73 | 263707322 | spot verification | selected facts (see references in the docs) |

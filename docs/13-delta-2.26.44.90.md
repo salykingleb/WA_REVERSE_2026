@@ -52,9 +52,9 @@ test device: `30`. Details: [08-device-status/first-api-level.md](08-device-stat
 
 ### 1.3. Runtime class names
 
-jadx prefixes obfuscated names with `C<id>`; at runtime the names are the original ones:
+Decompiled code shows obfuscated names with a `C<id>` prefix; at runtime the names are shorter:
 
-| Purpose | jadx | runtime |
+| Purpose | decompiled name | runtime name |
 |---|---|---|
 | Stanza decoder (`readNode`) | `C242314q` | **`X.14q`** |
 | Stanza encoder (`writeNode`) | `C41301sR` | **`X.1sR`** |

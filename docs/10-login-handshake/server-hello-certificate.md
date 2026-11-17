@@ -2,7 +2,7 @@
 
 Build 2.26.35.75 (263507522). Parsing of the server response after ClientHello.
 Protobuf `X/C1LX.java`; handler `C1KE.A03` (`X/C1KE.java:145-151`, body not
-decompiled — logic from the jadx fallback dump); certificate protobufs:
+decompiled — logic from the fallback disassembly); certificate protobufs:
 `X/BW5.java`, `X/BW4.java`, `X/C25957Baq.java`; issuer `X/HWN.java`.
 
 ## 1. ServerHello protobuf (`X/C1LX.java:15-20`)
@@ -96,7 +96,7 @@ A2 8B 73 E7 69 5C 6C E1 F7 F9 54 5D A8 EE 6B`) — the long-term WhatsApp root
 public key embedded in the APK.
 
 Failure of any check — the exception `C1S0` (class X.1S0; the file was not exported
-by jadx due to a name register collision, referenced via `X/C0SW.java:1606`); outside,
+by the decompiler due to a name register collision, referenced via `X/C0SW.java:1606`); outside,
 in `C0SW.A0v` this is the branch:
 
 ```java
