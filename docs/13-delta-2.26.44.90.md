@@ -174,6 +174,6 @@ traced: the input size and the final digest identify the hashed file.
 
 | Item | Why | How to close |
 |---|---|---|
-| `_lh` value for 2.26.44.90 | blob is AES-256-CBC encrypted; authkey not captured | `mbedtls_sha256_*` hooks, or decrypt with authkey |
+| `_lh` value for 2.26.44.90 | blob is AES-256-CBC encrypted; authkey not captured | trace the SHA-256 primitives, or decrypt with the authkey |
 | Field 50 filler | no Java setter | native analysis / live payload with AB enabled |
 | `att-stanza-custom` response format | body not decompiled | trace `X.17x.A04` on a live session |
