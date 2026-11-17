@@ -148,3 +148,20 @@ succeeds the key lives in memory; the next connection with it will go resume-IK
 | TLV violations (`Unexpected KEM algorithm`, `Expected TLV ...`), other noise | `C28951Rz` | `ConnectionThread/connect/socket/disconnect/noise` + `c1fb.A0C()` (`X/C0SW.java:1437-1442`) | from `C51075Mse.reason` (4/5) |
 | Certificate failed verification | `C1S0` | `invalid-certificate-exception` + `c1fb.A0C()` (`X/C0SW.java:1606-1610`) | 10 |
 | The `GOA` marker instead of the frame length | `C28931Rx` (`X.1Rx` from `X/C1KE.java:88-91`) | `ConnectionThread/connect/socket/goaway` (`X/C0SW.java:1586-1592`) | 6 |
+
+## 4. Version 2.26.44.90 (264409011)
+
+Re-verified against the new build:
+
+- Certificate **v6** is unchanged: `BW5{leaf=1,intermediate=2}`, `BW4{details=1,signature=2}`,
+  `Baq{serial=1,issuerSerial=2,key=3,notBefore=4,notAfter=5}` — the `newMessageInfo`
+  descriptors are byte-identical between 2.26.35.75 and 2.26.44.90.
+- The root key `WhatsAppLongTerm1` is the same 32 bytes.
+- The five validation rules and the `leaf.key == server static` check are the same
+  (`X/C40461qe.java:202-212`).
+- The **v5 certificate path was removed**: no `BW6`/`Bar` messages, no
+  `noise certificate expired` error.
+- One text change: the mismatch error now ends with `; issuer=<issuerSerial>`
+  (`X/C40461qe.java:260-263`).
+
+Full delta: [13-delta-2.26.44.90.md](../13-delta-2.26.44.90.md).

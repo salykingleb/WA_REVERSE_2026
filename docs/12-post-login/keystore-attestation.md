@@ -1,5 +1,13 @@
 # Keystore attestation: `<ib><keystore_attestation>`
 
+> **2.26.44.90:** the stanza is now built from an explicit `"keystore_attestation"` literal
+> (`RunnableC49222Eu.java:89-98`), gated by AB 1935 and throttled by AB 2067 + pref
+> `ka_stanza_sent_ts`. AB 2078/2079 are **still read** in 2.26.44.90 (via `A0Z` instead of `A0Y`):
+> 2078 = random part length, 2079 = key validity window; the challenge layout is unchanged.
+> Delta: [13-delta-2.26.44.90.md](../13-delta-2.26.44.90.md) ·
+> Detail: [keystore-attestation-2.26.44.90.md](keystore-attestation-2.26.44.90.md).
+
+
 WhatsApp 2.26.35.75 (263507522). Wire: live capture of the first login; the node is sent at 02:48:52.769 — 24 ms after the server's `<safetynet><integrity nonce>` (.745). The body is a single base64 blob (4556 characters = **3417 bytes of DER**): four X.509 certificates back to back, with no separators.
 
 ## The chain of this session (Samsung TEE)

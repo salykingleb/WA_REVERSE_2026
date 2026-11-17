@@ -1,5 +1,12 @@
 # Documentation Table of Contents
 
+> **Version note.** This set documents **2.26.35.75** (263507522). It was re-verified against
+> **2.26.44.90** (264409011): the login handshake and crypto are unchanged (prelude bytes, Noise
+> patterns, pqMode, certificate v6, ClientFinish), the v5 handshake branch was removed, the
+> ClientPayload gained fields 49/50, and the attestation stanza logic changed (AB 1935/2067).
+> Full delta: [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md).
+
+
 A complete guide to the parameters of WhatsApp Android **2.26.35.75** (versionCode **263507522**) recovered through reverse engineering: jadx decompilation (`X.*` classes), the native libraries `libwhatsapp.so` / `libwasafe.so` / `libwasafedeps.so` (memory dumps, disassembler), live captures of `/v2/code`, `/v2/register`, the first XMPP login, and login logs.
 
 It is recommended to start reading with [01-flow-overview.md](01-flow-overview.md).
@@ -151,3 +158,7 @@ It is recommended to start reading with [01-flow-overview.md](01-flow-overview.m
 | [`keystore-attestation.md`](12-post-login/keystore-attestation.md) | Keystore attestation: `<ib><keystore_attestation>` |
 | [`prekeys-encrypt.md`](12-post-login/prekeys-encrypt.md) | Prekey upload: `<iq xmlns='encrypt' type='set'>` immediately after success |
 | [`timeline.md`](12-post-login/timeline.md) | Timeline of the first second after `<success>` |
+| [`keystore-attestation-2.26.44.90.md`](12-post-login/keystore-attestation-2.26.44.90.md) | Keystore attestation in 2.26.44.90: builder vs sender, AB 1934/1935/2067/2074/2078/2079 |
+
+### [13-delta-2.26.44.90.md](13-delta-2.26.44.90.md) — Full delta 2.26.35.75 → 2.26.44.90 (login and post-login)
+

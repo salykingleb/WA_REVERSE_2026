@@ -1,5 +1,10 @@
 # Preamble: bytes on the socket before ClientHello
 
+> **2.26.44.90:** the preamble is byte-identical (`57 41 06 03`), but it is now written by the
+> state machine `X.2DR.run()`; the v5 branch (`57 41 05 03`) was removed entirely.
+> Delta: [13-delta-2.26.44.90.md](../13-delta-2.26.44.90.md).
+
+
 Build 2.26.35.75 (263507522). This document describes everything the client writes to
 the chat socket OutputStream before the first HandshakeMessage protobuf frame, and how
 it reads the response frames. Code: `X/C1KE.java`, `X/C1KV.java`, `X/C1KU.java`,
@@ -142,3 +147,17 @@ Hash mixing: the `WA\x06\x03` preamble is not only written to the socket, but is
 mixed into the Noise protocol hash — the initialization of the hash with the pattern
 name and the mixing in of the preamble are covered in the "Noise modes" chapter (span
 `init_cipher_full` = code 19, `init_cipher_resume` = code 20, `X/C1KS.java:49-50`).
+
+## 4. Version 2.26.44.90 (264409011)
+
+Re-verified against the new build (`jadx_264409011`, classes.dex smali):
+
+- The preamble bytes are **unchanged**: `X/C40461qe.A04()` → `{87, 65, 6, 3}`.
+- The writer moved out of the `NoiseSocket` constructor into the state machine
+  `X.2DR.run()` (span `send_preamble` = 27). Order is the same:
+  optional `ED 00 01` + 3-byte BE length + `routing_info` blob, then `57 41 06 03`.
+- The **v5 branch was removed entirely**: no `A00` version field, no `{87,65,5,3}`,
+  no `NoiseSocket protocol version is not 5 or 6` log, no v5 certificate protobufs.
+- Framing, `GOA` marker and the 16 MiB limit are unchanged.
+
+Full delta: [13-delta-2.26.44.90.md](../13-delta-2.26.44.90.md).

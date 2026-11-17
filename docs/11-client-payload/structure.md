@@ -1,5 +1,10 @@
 # ClientPayload: how the encrypted login payload is assembled
 
+> **2.26.44.90:** the message is now `X/C39651oO` with **38 fields** — `messageSts` (49) and
+> `integrationAttestation` (50) were added; numbers 1–48 are unchanged; `appVersion = {2,26,44,90}`.
+> Delta: [13-delta-2.26.44.90.md](../13-delta-2.26.44.90.md).
+
+
 WhatsApp build 2.26.35.75, versionCode 263507522. ClientPayload is the protobuf message
 `X/C1HS.java` (jadx name `C1HS`, original `X.1HS`) that is sent **encrypted** inside
 the Noise handshake: on a full handshake (first login) — in the `payload` field of the
@@ -103,6 +108,9 @@ Registration of the factories themselves: case 6562 → `new C1Ie()` (Build fiel
 
 ## Complete table of the C1HS protobuf fields
 
+> For 2.26.44.90 the message is `X/C39651oO` with **38 field numbers** (1–48 unchanged,
+> plus 49 `messageSts` and 50 `integrationAttestation`, see the end of the table).
+
 The numbers are `*_FIELD_NUMBER` constants from `X/C1HS.java:19-56`.
 
 | # | Field | Type | Who sets it | When it is absent |
@@ -135,14 +143,16 @@ The numbers are `*_FIELD_NUMBER` constants from `X/C1HS.java:19-56`.
 | 37 | `memClass` | int32 | `X.1Hs` from `C1Iy.A01` | always |
 | 38 | `interopData` | message `C26981Jh` | — | interop branch (Messenger) |
 | 40 | `trafficAnonymization` | enum `C1J0` | `X.1Iz` | always: STANDARD(1) or OFF(0) |
-| 41 | `lidDbMigrated` | bool | `X.1J8` when `c1hm.A04 == null` and `C03580Gs` is ready | phone with a JID — field absent |
+| 41 | `lidDbMigrated` | bool | `X.1J8` when `c1hm.A04 != null` and `C03580Gs` is ready | phone with a JID — field absent |
 | 42 | `accountType` | enum | — | not populated by this client |
 | 43 | `connectionSequenceInfo` | uint32 | `X.1J1`, bit packing | always written after the filler |
-| 44 | `paaLink` | bool | — | not populated |
+| 44 | `paaLink` | bool | `X.1JB` (DI 2133) | populated when the link is available |
 | 45 | `preacksCount` | int32 | `X.1J8` from C1HM.A07.A00 | no queue snapshot (A1S returned null) — field absent |
 | 46 | `processingQueueSize` | int32 | `X.1J8` from C1HM.A07.A01 | same |
 | 47 | `pairedPeripherals` | repeated string | `X.1JC`: `smart_glasses`, `garmin` | no AB 27619 / no linked devices |
 | 48 | `testIsolationId` | bytes | — | test builds only |
+| 49 | `messageSts` | int64 | `X.1oI.A09` (`duplexMessageStsMicros`) — **new in 2.26.44.90** | not set when the value is absent |
+| 50 | `integrationAttestation` | msg `C8t7{staticUnbound=1, onlineSigned=3}` — **new in 2.26.44.90** | no Java setter: filled outside Java (native) | not observed in Java-side assembly |
 
 Protobuf field defaults: strings are initialized to `Voip.REJECT_REASON_DECLINED` = `""`
 (`C1HS.java:93`, `com/whatsapp/calling/voipcalling/Voip.java:54`), `shards_` — an empty

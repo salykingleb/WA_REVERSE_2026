@@ -1,7 +1,8 @@
-# WhatsApp: Complete Registration & Login Scheme (Reverse-Engineered Documentation)
+﻿# WhatsApp: Complete Registration & Login Scheme (Reverse-Engineered Documentation)
 
 Results of reverse engineering the **WhatsApp Android 2.26.35.75** client
-(versionCode **263507522**): a complete breakdown of every parameter and
+(versionCode **263507522**), re-verified against **2.26.44.90** (264409011) — see
+[docs/13-delta-2.26.44.90.md](docs/13-delta-2.26.44.90.md) and [VERSIONS.md](VERSIONS.md): a complete breakdown of every parameter and
 cryptographic mechanism — from requesting the SMS code to the first account
 login and the server-side attestations that follow it.
 
@@ -38,6 +39,7 @@ STAGE D. The first second after <success>           — prekeys, keystore attest
 ```
 .
 ├── README.md                       ← you are here
+├── VERSIONS.md                     ← versions covered + which facts apply
 ├── .gitignore
 └── docs/
     ├── README.md                   ← FULL TABLE OF CONTENTS (all 83 documents)
@@ -57,8 +59,9 @@ STAGE D. The first second after <success>           — prekeys, keystore attest
     ├── 10-login-handshake/         ← preamble, Noise XX/IK/PQ, ClientHello/ServerHello/
     │                                  ClientFinish, success/failure
     ├── 11-client-payload/          ← all 48 protobuf fields of the login payload
-    └── 12-post-login/              ← post-success timeline, prekeys, keystore attestation,
+    ├── 12-post-login/              ← post-success timeline, prekeys, keystore attestation,
                                        integrity_payload, gpia jws, ACS, initial sync
+    └── 13-delta-2.26.44.90.md     ← DELTA: what changed in 2.26.44.90 (login + post-login)
 ```
 
 Every folder has its own `README.md` index; every parameter is described in a
