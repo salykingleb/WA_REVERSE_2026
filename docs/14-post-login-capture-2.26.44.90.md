@@ -3,7 +3,11 @@
 Live capture of the first XMPP login right after registering a new account on
 **2.26.44.90 (264409011)**, device SM-A325F, Android 13.
 
-Raw log: `hooks/wa_agent_log_registration.txt` (5806 lines).
+Raw log: hooks/wa_agent_log_registration.txt (6008 lines, 5845 writes, 110 incoming nodes).
+
+> **Coverage.** This document is a curated timeline of the capture, not the raw log.
+> The raw log stays on the analysis machine. For the per-parameter code of every node see
+> [15-post-login-chain-2.26.44.90.md](15-post-login-chain-2.26.44.90.md).
 
 ## 1. How it was captured
 
